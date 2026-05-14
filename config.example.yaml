@@ -1,0 +1,18 @@
+alipay_app_id: ""
+alipay_private_key: ""
+alipay_public_key: ""
+
+vmq_base_url: "http://vmq:8080"
+vmq_key: ""
+vmq_device_key: ""
+
+epay_merchant_id: "1000"
+epay_merchant_key: ""
+
+database_driver: "sqlite"
+database_url: "alipay_vmq.db"
+
+public_base_url: "https://pay.example.com"
+listen_addr: ":8081"
+vmq_order_timeout: 5
+poll_interval: 30

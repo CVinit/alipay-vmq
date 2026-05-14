@@ -1,0 +1,24 @@
+# alipay-vmq build artifacts
+/alipay-vmq
+/bin/
+/data/
+*.db
+
+# Environment
+.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+
+# Local tooling
+.claude/
+.playwright-mcp/
+.spec-workflow/
+.trellis/
+AGENTS.md
+web/
