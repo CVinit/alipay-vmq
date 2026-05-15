@@ -1,0 +1,21 @@
+# 如果 PostgreSQL 已经由其他 compose 项目管理（如 VMQ-Go），
+# 使用此文件连接到已有的 shared-db-net 网络，不再启动新的 postgres 容器。
+#
+# 用法: docker compose -f docker-compose.standalone.yml up -d
+
+services:
+  alipay-vmq:
+    build: .
+    container_name: alipay-vmq
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    env_file:
+      - .env
+    networks:
+      - shared-db-net
+
+networks:
+  shared-db-net:
+    external: true
+    name: shared-db-net

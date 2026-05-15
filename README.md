@@ -63,19 +63,19 @@ PUBLIC_BASE_URL=https://pay.example.com
 
 ### 2. Docker Compose 部署（推荐）
 
-独立部署（使用 SQLite）：
+完整部署（含共享 PostgreSQL）：
 
 ```bash
 docker compose up -d
 ```
 
-接入已有 VMQ 网络和 PostgreSQL：
+如果 PostgreSQL 已由其他项目管理（`shared-db-net` 网络已存在）：
 
 ```bash
-cp docker-compose.override.yml.example docker-compose.override.yml
-# 编辑 override 文件，调整网络名和数据库连接
-docker compose up -d
+docker compose -f docker-compose.standalone.yml up -d
 ```
+
+详细部署教程见 [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)。
 
 ### 3. 本地开发
 

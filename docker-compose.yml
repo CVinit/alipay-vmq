@@ -1,10 +1,50 @@
 services:
   alipay-vmq:
     build: .
+    container_name: alipay-vmq
+    restart: unless-stopped
     ports:
       - "8081:8081"
     env_file:
       - .env
-    volumes:
-      - ./data:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - shared-db-net
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: shared-postgres
     restart: unless-stopped
+    environment:
+      TZ: ${TZ}
+      POSTGRES_DB: postgres
+      POSTGRES_USER: ${POSTGRES_SUPERUSER}
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERPASS}
+      VMQ_DB_NAME: ${VMQ_DB_NAME}
+      VMQ_DB_USER: ${VMQ_DB_USER}
+      VMQ_DB_PASSWORD: ${VMQ_DB_PASSWORD}
+      DUJIAO_DB_NAME: ${DUJIAO_DB_NAME}
+      DUJIAO_DB_USER: ${DUJIAO_DB_USER}
+      DUJIAO_DB_PASSWORD: ${DUJIAO_DB_PASSWORD}
+      ALIPAY_VMQ_DB_NAME: ${ALIPAY_VMQ_DB_NAME}
+      ALIPAY_VMQ_DB_USER: ${ALIPAY_VMQ_DB_USER}
+      ALIPAY_VMQ_DB_PASSWORD: ${ALIPAY_VMQ_DB_PASSWORD}
+    volumes:
+      - ./data/postgres:/var/lib/postgresql/data
+      - ./initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_SUPERUSER} -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      shared-db-net:
+        aliases:
+          - shared-postgres
+
+networks:
+  shared-db-net:
+    name: shared-db-net
+    driver: bridge
