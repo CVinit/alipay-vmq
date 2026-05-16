@@ -46,6 +46,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
     {{if .IsMobile}}
       {{if .WapPayURL}}
       <a href="{{.WapPayURL}}" class="btn btn-primary">打开支付宝付款</a>
+      {{else if .PagePayURL}}
+      <a href="{{.PagePayURL}}" class="btn btn-primary">前往支付宝收银台</a>
       {{end}}
     {{else}}
       {{if .PagePayURL}}
@@ -70,8 +72,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
   var returnURL = "{{.ReturnURL}}";
   var pollInterval = 3000;
   var timer = document.getElementById("timer");
-  var startTime = Date.now();
-  var timeout = {{.Amount | printf "%s"}} ? 240000 : 0; // 4 min display timeout
+  var remaining = {{.RemainingSeconds}};
 
   function checkStatus() {
     fetch(statusURL).then(function(r) { return r.json(); }).then(function(data) {
@@ -92,15 +93,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
   }
 
   function updateTimer() {
-    var elapsed = Math.floor((Date.now() - startTime) / 1000);
-    var remaining = 240 - elapsed;
     if (remaining <= 0) {
-      timer.textContent = "订单即将过期，请尽快完成支付";
+      timer.textContent = "订单已过期";
+      location.reload();
       return;
     }
     var min = Math.floor(remaining / 60);
     var sec = remaining % 60;
     timer.textContent = "剩余支付时间: " + min + ":" + (sec < 10 ? "0" : "") + sec;
+    remaining--;
     setTimeout(updateTimer, 1000);
   }
 

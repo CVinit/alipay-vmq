@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"alipay-vmq/internal/alipay"
 )
@@ -19,17 +20,18 @@ var templateFS embed.FS
 var payTemplate = template.Must(template.ParseFS(templateFS, "templates/pay.html"))
 
 type payPageData struct {
-	OrderID    string
-	Token      string
-	Amount     string
-	Subject    string
-	QRCodeURL  string
-	WapPayURL  string
-	PagePayURL string
-	StatusURL  string
-	ReturnURL  string
-	IsMobile   bool
-	Expired    bool
+	OrderID        string
+	Token          string
+	Amount         string
+	Subject        string
+	QRCodeURL      string
+	WapPayURL      string
+	PagePayURL     string
+	StatusURL      string
+	ReturnURL      string
+	IsMobile       bool
+	Expired        bool
+	RemainingSeconds int
 }
 
 func (s *Server) handlePayPage(w http.ResponseWriter, r *http.Request) {
@@ -76,13 +78,14 @@ func (s *Server) handlePayPage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := &payPageData{
-		OrderID:   order.ID,
-		Token:     order.Token,
-		Amount:    order.Amount,
-		Subject:   order.Subject,
-		StatusURL: fmt.Sprintf("%s/api/order/status?order_id=%s&token=%s", s.cfg.PublicBaseURL, order.ID, order.Token),
-		ReturnURL: order.ReturnURL,
-		IsMobile:  isMobile,
+		OrderID:          order.ID,
+		Token:            order.Token,
+		Amount:           order.Amount,
+		Subject:          order.Subject,
+		StatusURL:        fmt.Sprintf("%s/api/order/status?order_id=%s&token=%s", s.cfg.PublicBaseURL, order.ID, order.Token),
+		ReturnURL:        order.ReturnURL,
+		IsMobile:         isMobile,
+		RemainingSeconds: remainingSeconds(order.CreatedAt, s.cfg.VMQOrderTimeout),
 	}
 
 	qrURL, err := s.alipay.PreCreate(context.Background(), payReq)
@@ -99,13 +102,13 @@ func (s *Server) handlePayPage(w http.ResponseWriter, r *http.Request) {
 		} else {
 			data.WapPayURL = wapURL
 		}
+	}
+
+	pageURL, err := s.alipay.PagePay(payReq)
+	if err != nil {
+		slog.Error("page pay failed", "order_id", order.ID, "error", err)
 	} else {
-		pageURL, err := s.alipay.PagePay(payReq)
-		if err != nil {
-			slog.Error("page pay failed", "order_id", order.ID, "error", err)
-		} else {
-			data.PagePayURL = pageURL
-		}
+		data.PagePayURL = pageURL
 	}
 
 	w.Header().Set("Cache-Control", "no-store")
@@ -130,4 +133,13 @@ func formatAmount(amount string) string {
 		return amount
 	}
 	return strconv.FormatFloat(f, 'f', 2, 64)
+}
+
+func remainingSeconds(createdAt time.Time, timeoutMinutes int) int {
+	deadline := createdAt.Add(time.Duration(timeoutMinutes) * time.Minute)
+	remaining := int(time.Until(deadline).Seconds())
+	if remaining < 0 {
+		return 0
+	}
+	return remaining
 }
