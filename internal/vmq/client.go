@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -58,6 +59,8 @@ func (c *Client) CreateOrder(payType int, amount, orderID string) (*CreateOrderR
 		return nil, fmt.Errorf("vmq createOrder read body: %w", err)
 	}
 
+	slog.Debug("vmq createOrder response", "body", string(body))
+
 	var result CreateOrderResponse
 	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, fmt.Errorf("vmq createOrder parse: %w (body: %s)", err, string(body))
@@ -65,6 +68,7 @@ func (c *Client) CreateOrder(payType int, amount, orderID string) (*CreateOrderR
 	if result.Code != 1 {
 		return nil, fmt.Errorf("vmq createOrder failed: %s", result.Msg)
 	}
+	slog.Info("vmq createOrder success", "orderId", result.OrderID, "payAmount", result.Amount)
 	return &result, nil
 }
 
