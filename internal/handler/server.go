@@ -53,6 +53,12 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleCreateOrder(req *epay.CreateRequest) (*epay.CreateResponse, error) {
+	existing, _ := s.store.GetOrderByEpayTradeNo(context.Background(), req.OutTradeNo)
+	if existing != nil && existing.Status == store.StatusPending {
+		payURL := fmt.Sprintf("%s/pay?order_id=%s&token=%s", s.cfg.PublicBaseURL, existing.ID, existing.Token)
+		return &epay.CreateResponse{PayURL: payURL}, nil
+	}
+
 	orderID := generateID()
 	token := generateToken()
 
