@@ -6,6 +6,7 @@
 - [前置条件](#前置条件)
 - [方式一：完整部署（含 PostgreSQL）](#方式一完整部署含-postgresql)
 - [方式二：接入已有 PostgreSQL](#方式二接入已有-postgresql)
+- [方式三：使用 GHCR 预构建镜像](#方式三使用-ghcr-预构建镜像)
 - [Nginx 反向代理配置](#nginx-反向代理配置)
 - [Dujiao-Next 对接配置](#dujiao-next-对接配置)
 - [VMQ-Go 侧配置](#vmq-go-侧配置)
@@ -150,6 +151,90 @@ docker compose -f docker-compose.standalone.yml up -d
 docker exec -it alipay-vmq wget -qO- http://shared-postgres:5432 2>&1 | head -1
 # 应该能连通（即使返回错误内容，说明网络通）
 ```
+
+---
+
+## 方式三：使用 GHCR 预构建镜像
+
+无需克隆源码、无需本地构建，直接拉取 GitHub Actions 自动构建的 Docker 镜像。支持 `linux/amd64` 和 `linux/arm64`。
+
+镜像地址：`ghcr.io/cvinit/alipay-vmq`
+
+### 场景 A：完整部署（含 PostgreSQL）
+
+适用于全新服务器，一键拉起所有服务。
+
+```bash
+# 只需下载配置文件和初始化脚本
+mkdir alipay-vmq && cd alipay-vmq
+
+# 下载必要文件
+curl -LO https://raw.githubusercontent.com/CVinit/alipay-vmq/master/docker-compose.ghcr.yml
+curl -LO https://raw.githubusercontent.com/CVinit/alipay-vmq/master/.env.example
+mkdir -p initdb
+curl -L https://raw.githubusercontent.com/CVinit/alipay-vmq/master/initdb/01-create-databases.sh -o initdb/01-create-databases.sh
+chmod +x initdb/01-create-databases.sh
+
+# 配置环境变量
+cp .env.example .env
+# 编辑 .env，填入支付宝密钥、VMQ 密钥等（参考方式一）
+
+# 启动
+docker compose -f docker-compose.ghcr.yml up -d
+```
+
+### 场景 B：接入已有 PostgreSQL 网络
+
+适用于 PostgreSQL 已由其他项目管理（`shared-db-net` 已存在）。
+
+```bash
+mkdir alipay-vmq && cd alipay-vmq
+
+curl -LO https://raw.githubusercontent.com/CVinit/alipay-vmq/master/docker-compose.ghcr-standalone.yml
+curl -LO https://raw.githubusercontent.com/CVinit/alipay-vmq/master/.env.example
+
+cp .env.example .env
+# 编辑 .env
+
+# 启动（使用 latest 镜像）
+docker compose -f docker-compose.ghcr-standalone.yml up -d
+```
+
+### 指定版本
+
+默认拉取 `latest`（跟随 master 分支）。生产环境建议固定版本：
+
+```bash
+# 使用特定版本
+VMQ_IMAGE=ghcr.io/cvinit/alipay-vmq:v1.0.0 docker compose -f docker-compose.ghcr-standalone.yml up -d
+```
+
+也可以直接修改 `.env`：
+
+```bash
+# 在 .env 中添加
+VMQ_IMAGE=ghcr.io/cvinit/alipay-vmq:v1.0.0
+```
+
+### 更新镜像
+
+```bash
+# 拉取最新镜像并重启
+docker compose -f docker-compose.ghcr.yml pull
+docker compose -f docker-compose.ghcr.yml up -d
+
+# 或指定版本更新
+VMQ_IMAGE=ghcr.io/cvinit/alipay-vmq:v1.1.0 docker compose -f docker-compose.ghcr-standalone.yml up -d
+```
+
+### 可用标签
+
+| 标签 | 说明 |
+|------|------|
+| `latest` | 最新 master 分支构建 |
+| `master` | 同 latest |
+| `v1.0.0` | 特定版本（推送 tag 时生成） |
+| `sha-abc1234` | 特定 commit 构建 |
 
 ---
 

@@ -63,16 +63,32 @@ PUBLIC_BASE_URL=https://pay.example.com
 
 ### 2. Docker Compose 部署（推荐）
 
-完整部署（含共享 PostgreSQL）：
+完整部署（含共享 PostgreSQL，本地构建）：
 
 ```bash
 docker compose up -d
 ```
 
+使用 GHCR 预构建镜像（无需克隆源码）：
+
+```bash
+docker compose -f docker-compose.ghcr.yml up -d
+```
+
 如果 PostgreSQL 已由其他项目管理（`shared-db-net` 网络已存在）：
 
 ```bash
+# 本地构建
 docker compose -f docker-compose.standalone.yml up -d
+
+# 或使用 GHCR 镜像
+docker compose -f docker-compose.ghcr-standalone.yml up -d
+```
+
+固定版本部署：
+
+```bash
+VMQ_IMAGE=ghcr.io/cvinit/alipay-vmq:v1.0.0 docker compose -f docker-compose.ghcr-standalone.yml up -d
 ```
 
 详细部署教程见 [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)。
