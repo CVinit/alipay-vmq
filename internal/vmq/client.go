@@ -30,11 +30,19 @@ func NewClient(baseURL, key, deviceKey string) *Client {
 	}
 }
 
+type createOrderRaw struct {
+	Code int    `json:"code"`
+	Msg  string `json:"msg"`
+	Data struct {
+		OrderID     string  `json:"orderId"`
+		ReallyPrice float64 `json:"reallyPrice"`
+		PayURL      string  `json:"payUrl"`
+	} `json:"data"`
+}
+
 type CreateOrderResponse struct {
-	Code    int    `json:"code"`
-	Msg     string `json:"msg"`
-	OrderID string `json:"orderId"`
-	Amount  string `json:"payAmount"`
+	OrderID string
+	Amount  string
 }
 
 func (c *Client) CreateOrder(payType int, amount, orderID string) (*CreateOrderResponse, error) {
@@ -61,15 +69,20 @@ func (c *Client) CreateOrder(payType int, amount, orderID string) (*CreateOrderR
 
 	slog.Debug("vmq createOrder response", "body", string(body))
 
-	var result CreateOrderResponse
-	if err := json.Unmarshal(body, &result); err != nil {
+	var raw createOrderRaw
+	if err := json.Unmarshal(body, &raw); err != nil {
 		return nil, fmt.Errorf("vmq createOrder parse: %w (body: %s)", err, string(body))
 	}
-	if result.Code != 1 {
-		return nil, fmt.Errorf("vmq createOrder failed: %s", result.Msg)
+	if raw.Code != 1 {
+		return nil, fmt.Errorf("vmq createOrder failed: %s", raw.Msg)
 	}
-	slog.Info("vmq createOrder success", "orderId", result.OrderID, "payAmount", result.Amount)
-	return &result, nil
+
+	result := &CreateOrderResponse{
+		OrderID: raw.Data.OrderID,
+		Amount:  strconv.FormatFloat(raw.Data.ReallyPrice, 'f', -1, 64),
+	}
+	slog.Info("vmq createOrder success", "orderId", result.OrderID, "reallyPrice", result.Amount)
+	return result, nil
 }
 
 func (c *Client) AppPush(price string) error {
