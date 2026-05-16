@@ -5,8 +5,10 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -62,7 +64,7 @@ func (s *Server) handleCreateOrder(req *epay.CreateRequest) (*epay.CreateRespons
 	orderID := generateID()
 	token := generateToken()
 
-	vmqResp, err := s.vmq.CreateOrder(2, req.Money, orderID, req.NotifyURL)
+	vmqResp, err := s.vmq.CreateOrder(2, req.Money, orderID, "")
 	if err != nil {
 		return nil, fmt.Errorf("vmq create order: %w", err)
 	}
@@ -137,6 +139,8 @@ func (s *Server) handleNotify(w http.ResponseWriter, r *http.Request) {
 	if err := s.store.MarkPaid(context.Background(), order.ID); err != nil {
 		slog.Error("notify mark paid failed", "order_id", order.ID, "error", err)
 	}
+
+	s.notifyMerchant(order, noti.TradeNo)
 
 	fmt.Fprint(w, "success")
 }
@@ -225,6 +229,7 @@ func (s *Server) tryQueryAndPush(ctx context.Context, order *store.Order) {
 	}
 
 	s.store.MarkPaid(ctx, order.ID)
+	s.notifyMerchant(order, result.TradeNo)
 }
 
 func generateID() string {
@@ -237,4 +242,31 @@ func generateToken() string {
 	b := make([]byte, 16)
 	rand.Read(b)
 	return hex.EncodeToString(b)
+}
+
+func (s *Server) notifyMerchant(order *store.Order, tradeNo string) {
+	if order.NotifyURL == "" {
+		return
+	}
+
+	params := url.Values{}
+	params.Set("pid", s.cfg.EpayMerchantID)
+	params.Set("trade_no", tradeNo)
+	params.Set("out_trade_no", order.EpayTradeNo)
+	params.Set("type", "alipay")
+	params.Set("name", order.Subject)
+	params.Set("money", order.OriginalAmount)
+	params.Set("trade_status", "TRADE_SUCCESS")
+	params.Set("sign", epay.Sign(params, s.cfg.EpayMerchantKey))
+	params.Set("sign_type", "MD5")
+
+	resp, err := http.PostForm(order.NotifyURL, params)
+	if err != nil {
+		slog.Error("notify merchant failed", "order_id", order.ID, "url", order.NotifyURL, "error", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	body, _ := io.ReadAll(resp.Body)
+	slog.Info("notify merchant", "order_id", order.ID, "status", resp.StatusCode, "body", string(body))
 }
