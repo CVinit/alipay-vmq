@@ -7,6 +7,7 @@ import (
 	"html/template"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"alipay-vmq/internal/alipay"
@@ -68,7 +69,7 @@ func (s *Server) handlePayPage(w http.ResponseWriter, r *http.Request) {
 	payReq := alipay.PayRequest{
 		OutTradeNo:     order.ID,
 		Subject:        order.Subject,
-		TotalAmount:    order.Amount,
+		TotalAmount:    formatAmount(order.Amount),
 		NotifyURL:      notifyURL,
 		ReturnURL:      returnURL,
 		TimeoutExpress: fmt.Sprintf("%dm", timeoutMinutes),
@@ -120,4 +121,13 @@ func detectMobile(ua string) bool {
 		}
 	}
 	return false
+}
+
+// formatAmount ensures the amount has exactly 2 decimal places for Alipay.
+func formatAmount(amount string) string {
+	f, err := strconv.ParseFloat(amount, 64)
+	if err != nil {
+		return amount
+	}
+	return strconv.FormatFloat(f, 'f', 2, 64)
 }
