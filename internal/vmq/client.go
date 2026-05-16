@@ -8,7 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -33,15 +33,19 @@ type CreateOrderResponse struct {
 	Code    int    `json:"code"`
 	Msg     string `json:"msg"`
 	OrderID string `json:"orderId"`
-	Amount  string `json:"payAmount"` // actual amount with tail digits
+	Amount  string `json:"payAmount"`
 }
 
 func (c *Client) CreateOrder(payType int, amount, orderID string) (*CreateOrderResponse, error) {
+	payTypeStr := strconv.Itoa(payType)
+	// VMQ sign = md5(payId + param + type + price + key)
+	sign := md5Hex(orderID + "" + payTypeStr + amount + c.key)
+
 	params := url.Values{}
 	params.Set("payId", orderID)
-	params.Set("type", fmt.Sprintf("%d", payType))
+	params.Set("type", payTypeStr)
 	params.Set("price", amount)
-	params.Set("sign", c.sign(params, c.key))
+	params.Set("sign", sign)
 
 	resp, err := c.http.PostForm(c.baseURL+"/createOrder", params)
 	if err != nil {
@@ -65,10 +69,15 @@ func (c *Client) CreateOrder(payType int, amount, orderID string) (*CreateOrderR
 }
 
 func (c *Client) AppPush(price string) error {
+	// VMQ sign = md5(type + price + t + deviceKey)
+	t := strconv.FormatInt(time.Now().UnixMilli(), 10)
+	sign := md5Hex("1" + price + t + c.deviceKey)
+
 	params := url.Values{}
 	params.Set("price", price)
-	params.Set("type", "1") // alipay
-	params.Set("sign", c.signPush(price))
+	params.Set("type", "1")
+	params.Set("t", t)
+	params.Set("sign", sign)
 
 	resp, err := c.http.PostForm(c.baseURL+"/appPush", params)
 	if err != nil {
@@ -94,30 +103,7 @@ func (c *Client) AppPush(price string) error {
 	return nil
 }
 
-func (c *Client) sign(params url.Values, key string) string {
-	keys := make([]string, 0, len(params))
-	for k := range params {
-		if k != "sign" {
-			keys = append(keys, k)
-		}
-	}
-	sort.Strings(keys)
-
-	var buf strings.Builder
-	for _, k := range keys {
-		buf.WriteString(k)
-		buf.WriteString("=")
-		buf.WriteString(params.Get(k))
-		buf.WriteString("&")
-	}
-	buf.WriteString(key)
-
-	h := md5.Sum([]byte(buf.String()))
-	return hex.EncodeToString(h[:])
-}
-
-func (c *Client) signPush(price string) string {
-	raw := price + "1" + c.deviceKey
-	h := md5.Sum([]byte(raw))
+func md5Hex(s string) string {
+	h := md5.Sum([]byte(s))
 	return hex.EncodeToString(h[:])
 }
