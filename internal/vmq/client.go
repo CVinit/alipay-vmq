@@ -71,11 +71,11 @@ func (c *Client) CreateOrder(payType int, amount, orderID string) (*CreateOrderR
 func (c *Client) AppPush(price string) error {
 	// VMQ sign = md5(type + price + t + deviceKey)
 	t := strconv.FormatInt(time.Now().UnixMilli(), 10)
-	sign := md5Hex("1" + price + t + c.deviceKey)
+	sign := md5Hex("2" + price + t + c.deviceKey)
 
 	params := url.Values{}
 	params.Set("price", price)
-	params.Set("type", "1")
+	params.Set("type", "2")
 	params.Set("t", t)
 	params.Set("sign", sign)
 
