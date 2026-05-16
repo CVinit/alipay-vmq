@@ -15,6 +15,7 @@ type Config struct {
 	AlipayPrivateKey string `yaml:"alipay_private_key"`
 	AlipayPublicKey  string `yaml:"alipay_public_key"`
 	AlipaySandbox    bool   `yaml:"alipay_sandbox"`
+	AlipayPreCreate  bool   `yaml:"alipay_precreate"`
 
 	// VMQ
 	VMQBaseURL   string `yaml:"vmq_base_url"`
@@ -118,6 +119,9 @@ func applyEnv(cfg *Config) {
 	}
 	if v := os.Getenv("ALIPAY_SANDBOX"); v != "" {
 		cfg.AlipaySandbox = strings.EqualFold(v, "true") || v == "1"
+	}
+	if v := os.Getenv("ALIPAY_PRECREATE"); v != "" {
+		cfg.AlipayPreCreate = strings.EqualFold(v, "true") || v == "1"
 	}
 }
 

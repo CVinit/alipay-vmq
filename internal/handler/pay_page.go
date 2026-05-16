@@ -88,11 +88,13 @@ func (s *Server) handlePayPage(w http.ResponseWriter, r *http.Request) {
 		RemainingSeconds: remainingSeconds(order.CreatedAt, s.cfg.VMQOrderTimeout),
 	}
 
-	qrURL, err := s.alipay.PreCreate(context.Background(), payReq)
-	if err != nil {
-		slog.Error("precreate failed", "order_id", order.ID, "error", err)
-	} else {
-		data.QRCodeURL = qrURL
+	if s.cfg.AlipayPreCreate {
+		qrURL, err := s.alipay.PreCreate(context.Background(), payReq)
+		if err != nil {
+			slog.Error("precreate failed", "order_id", order.ID, "error", err)
+		} else {
+			data.QRCodeURL = qrURL
+		}
 	}
 
 	if isMobile {
