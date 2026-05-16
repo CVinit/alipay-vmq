@@ -46,6 +46,7 @@ func NewServer(cfg *config.Config, st store.Store, ac *alipay.Client, vc *vmq.Cl
 	s.mux.HandleFunc("POST /notify", s.handleNotify)
 	s.mux.HandleFunc("GET /return", s.handleReturn)
 	s.mux.HandleFunc("GET /api/order/status", s.handleOrderStatus)
+	s.mux.HandleFunc("GET /vmq-callback", handleVMQCallback)
 
 	return s
 }
@@ -64,7 +65,7 @@ func (s *Server) handleCreateOrder(req *epay.CreateRequest) (*epay.CreateRespons
 	orderID := generateID()
 	token := generateToken()
 
-	vmqResp, err := s.vmq.CreateOrder(2, req.Money, orderID, "")
+	vmqResp, err := s.vmq.CreateOrder(2, req.Money, orderID, s.cfg.PublicBaseURL+"/vmq-callback")
 	if err != nil {
 		return nil, fmt.Errorf("vmq create order: %w", err)
 	}
@@ -242,6 +243,10 @@ func generateToken() string {
 	b := make([]byte, 16)
 	rand.Read(b)
 	return hex.EncodeToString(b)
+}
+
+func handleVMQCallback(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprint(w, "success")
 }
 
 func (s *Server) notifyMerchant(order *store.Order, tradeNo string) {
