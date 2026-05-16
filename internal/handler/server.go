@@ -133,6 +133,12 @@ func (s *Server) handleNotify(w http.ResponseWriter, r *http.Request) {
 
 	s.store.UpdateAlipayTradeNo(context.Background(), order.ID, noti.TradeNo)
 
+	if !s.notifyMerchant(order, noti.TradeNo) {
+		slog.Error("notify merchant not confirmed, skipping appPush", "order_id", order.ID)
+		fmt.Fprint(w, "success")
+		return
+	}
+
 	if err := s.vmq.AppPush(order.Amount); err != nil {
 		slog.Error("notify appPush failed", "order_id", order.ID, "error", err)
 	}
@@ -140,8 +146,6 @@ func (s *Server) handleNotify(w http.ResponseWriter, r *http.Request) {
 	if err := s.store.MarkPaid(context.Background(), order.ID); err != nil {
 		slog.Error("notify mark paid failed", "order_id", order.ID, "error", err)
 	}
-
-	s.notifyMerchant(order, noti.TradeNo)
 
 	fmt.Fprint(w, "success")
 }
@@ -224,13 +228,17 @@ func (s *Server) tryQueryAndPush(ctx context.Context, order *store.Order) {
 	})
 	s.store.UpdateAlipayTradeNo(ctx, order.ID, result.TradeNo)
 
+	if !s.notifyMerchant(order, result.TradeNo) {
+		slog.Error("poll notify merchant not confirmed", "order_id", order.ID)
+		return
+	}
+
 	if err := s.vmq.AppPush(order.Amount); err != nil {
 		slog.Error("poll appPush failed", "order_id", order.ID, "error", err)
 		return
 	}
 
 	s.store.MarkPaid(ctx, order.ID)
-	s.notifyMerchant(order, result.TradeNo)
 }
 
 func generateID() string {
@@ -249,9 +257,9 @@ func handleVMQCallback(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprint(w, "success")
 }
 
-func (s *Server) notifyMerchant(order *store.Order, tradeNo string) {
+func (s *Server) notifyMerchant(order *store.Order, tradeNo string) bool {
 	if order.NotifyURL == "" {
-		return
+		return true
 	}
 
 	params := url.Values{}
@@ -268,10 +276,12 @@ func (s *Server) notifyMerchant(order *store.Order, tradeNo string) {
 	resp, err := http.PostForm(order.NotifyURL, params)
 	if err != nil {
 		slog.Error("notify merchant failed", "order_id", order.ID, "url", order.NotifyURL, "error", err)
-		return
+		return false
 	}
 	defer resp.Body.Close()
 
 	body, _ := io.ReadAll(resp.Body)
-	slog.Info("notify merchant", "order_id", order.ID, "status", resp.StatusCode, "body", string(body))
+	result := strings.TrimSpace(string(body))
+	slog.Info("notify merchant", "order_id", order.ID, "status", resp.StatusCode, "body", result)
+	return resp.StatusCode == 200 && result == "success"
 }
