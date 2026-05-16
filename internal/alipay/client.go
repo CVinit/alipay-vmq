@@ -13,8 +13,8 @@ type Client struct {
 	client *alipay.Client
 }
 
-func NewClient(appID, privateKey, alipayPublicKey string) (*Client, error) {
-	c, err := alipay.New(appID, privateKey, false)
+func NewClient(appID, privateKey, alipayPublicKey string, sandbox bool) (*Client, error) {
+	c, err := alipay.New(appID, privateKey, !sandbox)
 	if err != nil {
 		return nil, fmt.Errorf("init alipay client: %w", err)
 	}

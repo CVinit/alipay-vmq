@@ -46,7 +46,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	ac, err := alipay.NewClient(cfg.AlipayAppID, cfg.AlipayPrivateKey, cfg.AlipayPublicKey)
+	ac, err := alipay.NewClient(cfg.AlipayAppID, cfg.AlipayPrivateKey, cfg.AlipayPublicKey, cfg.AlipaySandbox)
 	if err != nil {
 		slog.Error("init alipay client", "error", err)
 		os.Exit(1)

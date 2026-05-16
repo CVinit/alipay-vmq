@@ -14,6 +14,7 @@ type Config struct {
 	AlipayAppID      string `yaml:"alipay_app_id"`
 	AlipayPrivateKey string `yaml:"alipay_private_key"`
 	AlipayPublicKey  string `yaml:"alipay_public_key"`
+	AlipaySandbox    bool   `yaml:"alipay_sandbox"`
 
 	// VMQ
 	VMQBaseURL   string `yaml:"vmq_base_url"`
@@ -114,6 +115,9 @@ func applyEnv(cfg *Config) {
 		if n, err := strconv.Atoi(v); err == nil {
 			cfg.PollInterval = n
 		}
+	}
+	if v := os.Getenv("ALIPAY_SANDBOX"); v != "" {
+		cfg.AlipaySandbox = strings.EqualFold(v, "true") || v == "1"
 	}
 }
 
