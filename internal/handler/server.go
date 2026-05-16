@@ -62,7 +62,7 @@ func (s *Server) handleCreateOrder(req *epay.CreateRequest) (*epay.CreateRespons
 	orderID := generateID()
 	token := generateToken()
 
-	vmqResp, err := s.vmq.CreateOrder(2, req.Money, orderID)
+	vmqResp, err := s.vmq.CreateOrder(2, req.Money, orderID, req.NotifyURL)
 	if err != nil {
 		return nil, fmt.Errorf("vmq create order: %w", err)
 	}

@@ -45,7 +45,7 @@ type CreateOrderResponse struct {
 	Amount  string
 }
 
-func (c *Client) CreateOrder(payType int, amount, orderID string) (*CreateOrderResponse, error) {
+func (c *Client) CreateOrder(payType int, amount, orderID, notifyURL string) (*CreateOrderResponse, error) {
 	payTypeStr := strconv.Itoa(payType)
 	// VMQ sign = md5(payId + param + type + price + key)
 	sign := md5Hex(orderID + "" + payTypeStr + amount + c.key)
@@ -55,6 +55,9 @@ func (c *Client) CreateOrder(payType int, amount, orderID string) (*CreateOrderR
 	params.Set("type", payTypeStr)
 	params.Set("price", amount)
 	params.Set("sign", sign)
+	if notifyURL != "" {
+		params.Set("notifyUrl", notifyURL)
+	}
 
 	resp, err := c.http.PostForm(c.baseURL+"/createOrder", params)
 	if err != nil {
